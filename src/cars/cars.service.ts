@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,8 +12,37 @@ export class CarsService {
     private readonly carRepository: Repository<Car>,
   ) {}
 
-  create(createCarDto: CreateCarDto) {
-    return 'This action adds a new car';
+  async create(createCarDto: CreateCarDto): Promise<Car> {
+    try {
+      await this.carRepository.query(
+        'INSERT INTO car (plate, model, color, price, description, manufacture, status) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [
+          createCarDto.plate,
+          createCarDto.model,
+          createCarDto.color,
+          createCarDto.price,
+          createCarDto.description,
+          createCarDto.manufacture,
+          createCarDto.status,
+        ],
+      );
+      const car: Car = await this.findByPlate(createCarDto.plate);
+      return car;
+    } catch (error) {
+      throw new HttpException(
+        'Algum campo está inválido',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async findByPlate(plate: string): Promise<Car> {
+    const car: Car = await this.carRepository.query(
+      'SELECT * FROM CAR WHERE plate = $1',
+      [plate],
+    );
+    console.log(car);
+    return car;
   }
 
   async findAll(): Promise<Car[]> {
