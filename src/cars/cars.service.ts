@@ -36,15 +36,6 @@ export class CarsService {
     }
   }
 
-  async findByPlate(plate: string): Promise<Car> {
-    const car: Car = await this.carRepository.query(
-      'SELECT * FROM CAR WHERE plate = $1',
-      [plate],
-    );
-    console.log(car);
-    return car;
-  }
-
   async findAll(): Promise<Car[]> {
     const cars: Car[] = await this.carRepository.query('SELECT * FROM CAR');
     console.log(cars);
@@ -70,6 +61,23 @@ export class CarsService {
     await this.updateStatus(id, updateCarDto);
     const car = await this.findOne(id);
     console.log('Atualizando o carro id:' + id);
+    return car;
+  }
+
+  private async carExistsById(id: number): Promise<boolean> {
+    const exists: boolean = await this.carRepository.query(
+      'SELECT EXISTS (SELECT * FROM CAR WHERE id = $1)',
+      [id],
+    );
+    return exists[0].exists;
+  }
+
+  private async findByPlate(plate: string): Promise<Car> {
+    const car: Car = await this.carRepository.query(
+      'SELECT * FROM CAR WHERE plate = $1',
+      [plate],
+    );
+    console.log(car);
     return car;
   }
 
@@ -164,7 +172,12 @@ export class CarsService {
     return;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} car`;
+  async remove(id: number) {
+    const carExists: boolean = await this.carExistsById(id);
+    if (carExists == true) {
+      await this.carRepository.query('DELETE FROM car WHERE id = $1', [id]);
+      return 'Car id = ' + id + ' Deleted';
+    }
+    throw new HttpException('Carro não encontrado', HttpStatus.BAD_REQUEST);
   }
 }
